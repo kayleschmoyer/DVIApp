@@ -83,3 +83,4 @@ C:\dviapp\DVI.API\obj\Debug\net9.0\DVI.API.genruntimeconfig.cache
 C:\dviapp\DVI.API\obj\Debug\net9.0\ref\DVI.API.dll
 C:\dviapp\DVI.API\bin\Debug\net9.0\BCrypt.Net-Next.dll
 C:\dviapp\DVI.API\bin\Debug\net9.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+C:\dviapp\DVI.API\obj\Debug\net9.0\DVI.API.sourcelink.json

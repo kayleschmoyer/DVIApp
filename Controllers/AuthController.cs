@@ -3,7 +3,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using BCrypt.Net;
+using Microsoft.Data.SqlClient;
 
 namespace DVI.API.Controllers
 {
@@ -19,19 +19,35 @@ namespace DVI.API.Controllers
         }
 
         [HttpPost("login")]
-        public IActionResult Login([FromBody] LoginRequest request)
+        public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            // Hardcoded for now – replace with real DB check
-            if (request.Email == "tech@example.com" && request.Password == "password123")
-            {
-                var token = GenerateJwtToken(1, request.Email); // Simulated UserID = 1
-                return Ok(new { Token = token });
-            }
+            using var conn = new SqlConnection(_config.GetConnectionString("VastOfficeDb"));
+            using var cmd = new SqlCommand(@"
+                SELECT U.MECHANIC_NUMBER, U.PasswordHash, M.MECHANIC_NAME
+                FROM DVIUsers U
+                INNER JOIN MECHANIC M ON U.MECHANIC_NUMBER = M.MECHANIC_NUMBER
+                WHERE U.Email = @Email", conn);
 
-            return Unauthorized("Invalid credentials");
+            cmd.Parameters.AddWithValue("@Email", request.Email);
+            await conn.OpenAsync();
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            if (!reader.HasRows)
+                return Unauthorized("Invalid credentials");
+
+            await reader.ReadAsync();
+
+            string mechNumber = reader["MECHANIC_NUMBER"].ToString()!;
+            string hash = reader["PasswordHash"].ToString()!;
+
+            if (!BCrypt.Net.BCrypt.Verify(request.Password, hash))
+                return Unauthorized("Invalid credentials");
+
+            string token = GenerateJwtToken(mechNumber, request.Email);
+            return Ok(new { Token = token });
         }
 
-        private string GenerateJwtToken(int userId, string email)
+        private string GenerateJwtToken(string mechanicNumber, string email)
         {
             var jwtSettings = _config.GetSection("Jwt");
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]!));
@@ -40,7 +56,7 @@ namespace DVI.API.Controllers
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, email),
-                new Claim("UserID", userId.ToString())
+                new Claim("MechanicNumber", mechanicNumber)
             };
 
             var token = new JwtSecurityToken(
@@ -56,8 +72,8 @@ namespace DVI.API.Controllers
 
         public class LoginRequest
         {
-            public string Email { get; set; } = "";
-            public string Password { get; set; } = "";
+            public string Email { get; set; } = string.Empty;
+            public string Password { get; set; } = string.Empty;
         }
     }
 }
