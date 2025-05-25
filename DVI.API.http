@@ -1,0 +1,6 @@
+@DVI.API_HostAddress = http://localhost:5043
+
+GET {{DVI.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
