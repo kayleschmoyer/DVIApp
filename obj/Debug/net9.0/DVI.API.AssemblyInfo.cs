@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DVI.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+af4837da51ff7eccba10a8bd3cac0166159d7787")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1481a71c3fbb12474d1564410363443fc683fd5a")]
 [assembly: System.Reflection.AssemblyProductAttribute("DVI.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DVI.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
