@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { API_BASE_URL } from '../../config';
+import { hashPassword, saveSession } from '../../utils/auth';
+import { router } from 'expo-router';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState<string>('');
@@ -16,20 +18,22 @@ const LoginScreen = () => {
     }
 
     try {
+      const hashedPassword = hashPassword(password);
+
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password: hashedPassword }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        Alert.alert('Login Success', 'Welcome!');
-        console.log('Login data:', data);
-        // Here you would typically navigate to another screen or store the token
+        await saveSession(data); // store mechanic info
+        Alert.alert('Login Success', `Welcome ${data.mechanicName}`);
+        router.replace('/'); // Go to tabs/home
       } else {
         setErrorMessage(data.message || data.error || 'Login failed. Please check your credentials.');
       }
@@ -76,42 +80,41 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 20,
-    backgroundColor: '#F5F5F5', // Very light gray/off-white
-    alignItems: 'stretch', // Ensure children can stretch if they have width: '100%'
+    backgroundColor: '#F5F5F5',
+    alignItems: 'stretch',
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 40,
-    color: '#333333', // Dark graphite
+    color: '#333333',
   },
   input: {
     height: 50,
-    borderColor: '#B0B0B0', // Medium gray
+    borderColor: '#B0B0B0',
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 15,
     fontSize: 16,
     marginBottom: 15,
-    backgroundColor: '#FFFFFF', // White
-    color: '#222222', // Very dark graphite
-    // width: '100%' is implicitly handled by alignItems: 'stretch' in container for block elements like TextInput
+    backgroundColor: '#FFFFFF',
+    color: '#222222',
   },
   button: {
-    backgroundColor: '#222222', // Black or dark graphite
+    backgroundColor: '#222222',
     paddingVertical: 15,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 20, // Increased margin for separation
+    marginTop: 20,
   },
   buttonText: {
-    color: '#FFFFFF', // White
+    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
   },
   errorText: {
-    color: '#D32F2F', // Shade of red
+    color: '#D32F2F',
     textAlign: 'center',
     marginTop: 10,
     marginBottom: 10,
