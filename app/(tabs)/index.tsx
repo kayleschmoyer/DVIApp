@@ -1,99 +1,81 @@
-// app/(tabs)/index.tsx
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
-  StyleSheet,
-} from "react-native";
-import axios from "axios";
-import { useRouter } from "expo-router";
-import { API_BASE_URL } from "../../config";
+import { useEffect, useState } from 'react';
+import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
+import { TouchableOpacity } from 'react-native-gesture-handler';
+import { useRouter } from 'expo-router';
 
-interface WorkOrder {
+type WorkOrder = {
   id: number;
   woNumber: string;
   customerName: string;
   status: string;
   createdAt: string;
-}
+};
 
 export default function WorkOrdersTab() {
-  const [orders, setOrders] = useState<WorkOrder[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+  const isFocused = useIsFocused();
   const router = useRouter();
 
   useEffect(() => {
-    async function fetchWorkOrders() {
+    const fetchWorkOrders = async () => {
       try {
-        const response = await axios.get<WorkOrder[]>(
-          `${API_BASE_URL}/api/workorders`
-        );
-        console.log("💾 Fetched work orders:", response.data);
-        setOrders(response.data);
-      } catch (err: unknown) {
-        console.error("❌ Error fetching work orders:", err);
-      } finally {
-        setLoading(false);
+        const response = await fetch('http://192.168.7.185:5043/api/workorders');
+        const data = await response.json();
+        console.log('💾 Fetched work orders:', data);
+        setWorkOrders(data);
+      } catch (error) {
+        console.error('Failed to fetch work orders:', error);
       }
+    };
+
+    if (isFocused) {
+      fetchWorkOrders();
     }
-    fetchWorkOrders();
-  }, []);
-
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
-
-  if (orders.length === 0) {
-    return (
-      <View style={styles.center}>
-        <Text>No Work Orders found.</Text>
-      </View>
-    );
-  }
+  }, [isFocused]);
 
   return (
-    <FlatList
-      data={orders}
-      keyExtractor={(item) => item.id.toString()}
-      contentContainerStyle={styles.list}
-      renderItem={({ item }) => (
-        <TouchableOpacity
-          style={styles.card}
-          onPress={() => {
-            // @ts-ignore: dynamic route
-            router.push(`/workorders/${item.id}`);
-          }}
-        >
-          <Text style={styles.woNumber}>WO #{item.woNumber}</Text>
-          <Text style={styles.customer}>{item.customerName}</Text>
-          <Text style={styles.status}>{item.status}</Text>
-        </TouchableOpacity>
-      )}
-    />
+    <View style={styles.container}>
+      <Text style={styles.heading}>Work Orders</Text>
+      <FlatList
+  data={workOrders}
+  keyExtractor={(item) => item.id.toString()}
+  renderItem={({ item }) => (
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => router.push(`/inspection/${item.id}`)}
+    >
+      <Text style={styles.title}>{item.woNumber}</Text>
+      <Text>{item.customerName}</Text>
+      <Text>Status: {item.status}</Text>
+      <Text>{new Date(item.createdAt).toLocaleDateString()}</Text>
+    </TouchableOpacity>
+  )}
+/>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  list: { padding: 16 },
-  card: {
-    backgroundColor: "#FFF",
-    padding: 16,
-    marginBottom: 12,
-    borderRadius: 8,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
+  container: {
+    flex: 1,
+    paddingTop: 60,
+    paddingHorizontal: 16,
+    backgroundColor: '#fff',
   },
-  woNumber: { fontSize: 18, fontWeight: "600", marginBottom: 4 },
-  customer: { fontSize: 14, color: "#666", marginBottom: 2 },
-  status: { fontSize: 12, color: "#999" },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  heading: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  card: {
+    backgroundColor: '#f1f1f1',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
 });

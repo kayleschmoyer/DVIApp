@@ -7,7 +7,7 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#FF6600", // your brand color
+        tabBarActiveTintColor: "#FF6600",
       }}
     >
       <Tabs.Screen
@@ -19,18 +19,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-      {/* remove or comment out the “explore” tab */}
-      {/*
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: "Explore",
-          tabBarIcon: ({ color }) => (
-            <Feather name="play" size={20} color={color} />
-          ),
-        }}
-      />
-      */}
     </Tabs>
   );
 }
