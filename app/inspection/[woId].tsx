@@ -13,6 +13,10 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import InspectionItemCard from '../../components/InspectionItemCard';
 import {
+  getLocationOptions,
+  getReasonOptions,
+} from '../../constants/inspectionMappings'; // Import helper functions
+import {
   fetchInspectionItems,
   submitInspectionResults,
 } from '../../utils/inspectionApi';
@@ -22,11 +26,15 @@ type InspectionItem = {
   name: string; // 🔧 required by InspectionItemCard
   title: string;
   description?: string;
+  category: string; // Added category as per requirements for options lookup
 };
 
 type ItemState = {
   status: string | null;
   notes: string;
+  severity: string | null;
+  location: string | null;
+  reason: string | null;
 };
 
 const InspectionScreen = () => {
@@ -85,7 +93,13 @@ const InspectionScreen = () => {
         // Initialize states
         const initialStates: Record<string, ItemState> = {};
         fixedItems.forEach((item) => {
-          initialStates[item.id] = { status: null, notes: '' };
+          initialStates[item.id] = {
+            status: null,
+            notes: '',
+            severity: null,
+            location: null,
+            reason: null,
+          };
         });
 
         // Try to load saved states from AsyncStorage
@@ -123,39 +137,7 @@ const InspectionScreen = () => {
   // has been moved and integrated into the loadInspectionData effect above.
   // This ensures AsyncStorage loading happens after items are fetched and initial states are prepared.
 
-  // useEffect(() => { // This block is now integrated into loadInspectionData
-  //   const loadInspectionData = async () => {
-  //     if (!woId) return;
-
-  //     setLoading(true);
-  //     try {
-  //       const items = await fetchInspectionItems(woId);
-
-        // Ensure all items have `name` (fallback to title if needed)
-        // const fixedItems: InspectionItem[] = items.map((item: any) => ({
-        //   ...item,
-        //   name: item.name || item.title || 'Unnamed Item',
-        // }));
-
-        // setInspectionItems(fixedItems);
-
-        // const initialState: Record<string, ItemState> = {};
-        // fixedItems.forEach((item) => {
-        //   initialState[item.id] = { status: null, notes: '' };
-        // });
-        // setItemStates(initialState); // This is now handled by the combined effect
-      // } catch (error) {
-      //   console.error('Failed to fetch inspection items:', error);
-      //   Alert.alert('Error', 'Failed to load inspection items.');
-      // } finally {
-      //   setLoading(false);
-      // }
-    // };
-
-    // loadInspectionData();
-  // }, [woId]);
-
-  const handleStatusChange = (itemId: string, status: string) => {
+  const handleStatusChange = (itemId:string, status: string) => {
     setItemStates((prev) => ({
       ...prev,
       [itemId]: { ...prev[itemId], status },
@@ -169,16 +151,65 @@ const InspectionScreen = () => {
     }));
   };
 
+  const handleSeverityChange = (itemId: string, severity: string) => {
+    setItemStates(prev => ({
+      ...prev,
+      [itemId]: { ...prev[itemId], severity }
+    }));
+  };
+
+  const handleLocationChange = (itemId: string, location: string) => {
+    setItemStates(prev => ({
+      ...prev,
+      [itemId]: { ...prev[itemId], location }
+    }));
+  };
+
+  const handleReasonChange = (itemId: string, reason: string) => {
+    setItemStates(prev => ({
+      ...prev,
+      [itemId]: { ...prev[itemId], reason }
+    }));
+  };
+
+  const getValidationErrorMessage = (): string | null => {
+    for (const item of inspectionItems) {
+      const state = itemStates[item.id];
+      if (state?.status && (state.status === 'yellow' || state.status === 'red')) {
+        if (!state.severity) {
+          return `Item "${item.name}" is marked ${state.status} but is missing Severity.`;
+        }
+        if (!state.reason) {
+          return `Item "${item.name}" is marked ${state.status} but is missing Reason.`;
+        }
+      }
+    }
+    if (!allItemsInspected) { // allItemsInspected checks for status !== null
+        return "Please complete all items before submitting.";
+    }
+    return null;
+  };
+
+
   const handleSubmitInspection = async () => {
+    const validationError = getValidationErrorMessage();
+    if (validationError) {
+      Alert.alert('Validation Error', validationError);
+      return;
+    }
+
     setSubmitting(true);
 
     const payload = {
       woId: woId ?? 'UNKNOWN_WO',
-      mechanicNumber,
+      mechanicNumber, // Already correctly sourced from useAuth()
       items: inspectionItems.map((item) => ({
         itemId: item.id,
         status: itemStates[item.id]?.status,
         notes: itemStates[item.id]?.notes,
+        severity: itemStates[item.id]?.severity,
+        location: itemStates[item.id]?.location,
+        reason: itemStates[item.id]?.reason,
       })),
     };
 
@@ -215,7 +246,8 @@ const InspectionScreen = () => {
   }
 
   const totalItems = inspectionItems.length;
-  const allItemsInspected = completedCount === totalItems;
+  const allItemsInspected = completedCount === totalItems; // This checks if all items have a status
+  const validationErrorMessage = getValidationErrorMessage(); // Check for additional validation rules
 
   return (
     <View style={styles.container}>
@@ -235,16 +267,23 @@ const InspectionScreen = () => {
         renderItem={({ item }) => (
           <InspectionItemCard
             item={item}
+            itemCategory={item.category || 'default'} // Pass item.category, used for options lookup
             currentStatus={
-              ['green', 'yellow', 'red'].includes(
-                itemStates[item.id]?.status as string
-              )
-                ? (itemStates[item.id]?.status as 'green' | 'yellow' | 'red')
-                : null
+              (['green', 'yellow', 'red'].includes(itemStates[item.id]?.status as string)
+                ? itemStates[item.id]?.status as 'green' | 'yellow' | 'red'
+                : null)
             }
             currentNotes={itemStates[item.id]?.notes}
+            currentSeverity={itemStates[item.id]?.severity}
+            currentLocation={itemStates[item.id]?.location}
+            currentReason={itemStates[item.id]?.reason}
             onStatusChange={handleStatusChange}
             onNotesChange={handleNotesChange}
+            onSeverityChange={handleSeverityChange}
+            onLocationChange={handleLocationChange}
+            onReasonChange={handleReasonChange}
+            categoryLocationOptions={getLocationOptions(item.category)}
+            categoryReasonOptions={getReasonOptions(item.category)}
             isSubmitting={submitting}
           />
         )}
@@ -253,10 +292,10 @@ const InspectionScreen = () => {
             <TouchableOpacity
               style={[
                 styles.submitButton,
-                (submitting || !allItemsInspected) && styles.disabledButton,
+                (submitting || !!validationErrorMessage) && styles.disabledButton,
               ]}
               onPress={handleSubmitInspection}
-              disabled={submitting || !allItemsInspected}
+              disabled={submitting || !!validationErrorMessage}
             >
               {submitting ? (
                 <ActivityIndicator size="small" color="#fff" />
@@ -264,9 +303,9 @@ const InspectionScreen = () => {
                 <Text style={styles.submitButtonText}>Submit Inspection</Text>
               )}
             </TouchableOpacity>
-            {!allItemsInspected && (
+            {!!validationErrorMessage && (
               <Text style={styles.completionHintText}>
-                Please complete all items before submitting.
+                {validationErrorMessage}
               </Text>
             )}
           </View>
